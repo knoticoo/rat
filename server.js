@@ -156,9 +156,28 @@ app.get('/api/items', (req, res) => {
     });
 });
 
+// Get food items by category
+app.get('/api/items/category/:categoryId', (req, res) => {
+    const { categoryId } = req.params;
+    
+    db.all(`
+        SELECT cfi.*, c.display_name as category_name 
+        FROM custom_food_items cfi 
+        LEFT JOIN categories c ON cfi.category_id = c.id 
+        WHERE cfi.category_id = ?
+        ORDER BY cfi.created_at DESC
+    `, [categoryId], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
 // Add new custom food item
 app.post('/api/items', (req, res) => {
-    const { name, type } = req.body;
+    const { name, type, category_id } = req.body;
     
     if (!name || !type) {
         res.status(400).json({ error: 'Название и тип продукта обязательны' });
@@ -170,7 +189,7 @@ app.post('/api/items', (req, res) => {
         return;
     }
     
-    db.run('INSERT INTO custom_food_items (name, type) VALUES (?, ?)', [name, type], function(err) {
+    db.run('INSERT INTO custom_food_items (name, type, category_id) VALUES (?, ?, ?)', [name, type, category_id], function(err) {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -179,6 +198,7 @@ app.post('/api/items', (req, res) => {
             id: this.lastID, 
             name, 
             type, 
+            category_id,
             message: 'Продукт успешно добавлен!' 
         });
     });

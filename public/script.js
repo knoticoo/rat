@@ -114,9 +114,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <button id="close-modal-btn" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">×</button>
             <h3 style="margin: 0 0 20px 0; color: #2d3748; text-align: center; font-size: 1.5rem;">➕ Добавить продукт</h3>
             <input type="text" id="item-name" placeholder="Название продукта" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
-            <select id="item-type" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
+            <select id="item-type" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
                 <option value="safe">✅ Безопасный</option>
                 <option value="dangerous">❌ Опасный</option>
+            </select>
+            <select id="item-category" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <option value="">Выберите категорию...</option>
             </select>
             <button id="add-item-btn" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 1rem;">Добавить продукт</button>
         </div>
