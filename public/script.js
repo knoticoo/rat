@@ -90,53 +90,251 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add search functionality (bonus feature)
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Поиск продуктов...';
-    searchInput.style.cssText = `
+    // Custom food items functionality
+    let customItems = [];
+    
+    // Create add item form
+    const addItemForm = document.createElement('div');
+    addItemForm.id = 'add-item-form';
+    addItemForm.style.cssText = `
         position: fixed;
         top: 80px;
         right: 20px;
-        padding: 10px 15px;
-        border: 2px solid #667eea;
-        border-radius: 25px;
-        outline: none;
         background: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         z-index: 1000;
-        width: 250px;
+        width: 300px;
         font-family: inherit;
+        border: 2px solid #667eea;
     `;
-
-    document.body.appendChild(searchInput);
-
-    // Search functionality
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const allItems = document.querySelectorAll('.food-item, .tip-card, .fact-card');
+    
+    addItemForm.innerHTML = `
+        <h3 style="margin: 0 0 15px 0; color: #2d3748; text-align: center;">➕ Добавить продукт</h3>
+        <input type="text" id="item-name" placeholder="Название продукта" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
+        <select id="item-type" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
+            <option value="safe">✅ Безопасный</option>
+            <option value="dangerous">❌ Опасный</option>
+        </select>
+        <button id="add-item-btn" style="width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Добавить</button>
+        <button id="toggle-form-btn" style="width: 100%; padding: 8px; margin-top: 10px; background: #e2e8f0; color: #4a5568; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">Скрыть форму</button>
+    `;
+    
+    document.body.appendChild(addItemForm);
+    
+    // Toggle form visibility
+    const toggleFormBtn = document.getElementById('toggle-form-btn');
+    const form = document.getElementById('add-item-form');
+    let formVisible = true;
+    
+    toggleFormBtn.addEventListener('click', function() {
+        formVisible = !formVisible;
+        if (formVisible) {
+            form.style.display = 'block';
+            this.textContent = 'Скрыть форму';
+        } else {
+            form.style.display = 'none';
+            this.textContent = 'Показать форму';
+        }
+    });
+    
+    // API functions
+    async function fetchCustomItems() {
+        try {
+            const response = await fetch('/api/items');
+            if (!response.ok) throw new Error('Ошибка загрузки данных');
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка загрузки продуктов:', error);
+            showNotification('Ошибка загрузки данных', 'error');
+            return [];
+        }
+    }
+    
+    async function addCustomItem(name, type) {
+        try {
+            const response = await fetch('/api/items', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, type })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Ошибка добавления продукта');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка добавления продукта:', error);
+            throw error;
+        }
+    }
+    
+    async function deleteCustomItem(id) {
+        try {
+            const response = await fetch(`/api/items/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Ошибка удаления продукта');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка удаления продукта:', error);
+            throw error;
+        }
+    }
+    
+    async function clearCustomItemsByType(type) {
+        try {
+            const response = await fetch(`/api/items/type/${type}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Ошибка очистки продуктов');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка очистки продуктов:', error);
+            throw error;
+        }
+    }
+    
+    // Add item functionality
+    document.getElementById('add-item-btn').addEventListener('click', async function() {
+        const itemName = document.getElementById('item-name').value.trim();
+        const itemType = document.getElementById('item-type').value;
         
-        allItems.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            if (text.includes(searchTerm)) {
-                item.style.display = 'block';
-                item.style.opacity = '1';
-            } else {
-                item.style.opacity = '0.3';
+        if (itemName) {
+            try {
+                const newItem = await addCustomItem(itemName, itemType);
+                
+                // Add to local array
+                customItems.push(newItem);
+                
+                // Add to UI
+                addCustomItemToUI(newItem);
+                
+                // Clear form
+                document.getElementById('item-name').value = '';
+                
+                // Show success message
+                showNotification('Продукт добавлен!', 'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        } else {
+            showNotification('Введите название продукта', 'error');
+        }
+    });
+    
+    // Function to add custom item to UI
+    function addCustomItemToUI(item) {
+        const category = item.type === 'safe' ? 'safe' : 'dangerous';
+        const categoryElement = document.querySelector(`.food-category.${category} .food-grid`);
+        
+        // Check if custom category exists
+        let customCategoryElement = categoryElement.querySelector('.custom-category');
+        if (!customCategoryElement) {
+            customCategoryElement = document.createElement('div');
+            customCategoryElement.className = 'food-item custom-category';
+            customCategoryElement.innerHTML = `
+                <h4>Мои продукты</h4>
+                <ul class="custom-items-list"></ul>
+                <button class="clear-custom-btn" style="margin-top: 10px; padding: 5px 10px; background: #f56565; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">Очистить все</button>
+            `;
+            categoryElement.appendChild(customCategoryElement);
+            
+            // Add clear functionality
+            customCategoryElement.querySelector('.clear-custom-btn').addEventListener('click', async function() {
+                if (confirm('Удалить все ваши продукты?')) {
+                    try {
+                        await clearCustomItemsByType(item.type);
+                        customItems = customItems.filter(i => i.type !== item.type);
+                        customCategoryElement.remove();
+                        showNotification('Продукты удалены', 'success');
+                    } catch (error) {
+                        showNotification(error.message, 'error');
+                    }
+                }
+            });
+        }
+        
+        const listElement = customCategoryElement.querySelector('.custom-items-list');
+        const listItem = document.createElement('li');
+        listItem.innerHTML = `
+            ${item.name}
+            <button class="remove-item-btn" data-id="${item.id}" style="margin-left: 10px; background: #f56565; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.7rem; padding: 2px 6px;">×</button>
+        `;
+        listElement.appendChild(listItem);
+        
+        // Add remove functionality
+        listItem.querySelector('.remove-item-btn').addEventListener('click', async function() {
+            const itemId = parseInt(this.dataset.id);
+            try {
+                await deleteCustomItem(itemId);
+                customItems = customItems.filter(i => i.id !== itemId);
+                listItem.remove();
+                
+                // Remove custom category if empty
+                if (listElement.children.length === 0) {
+                    customCategoryElement.remove();
+                }
+                
+                showNotification('Продукт удален', 'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
             }
         });
-    });
+    }
+    
+    // Load existing custom items on page load
+    async function loadCustomItems() {
+        customItems = await fetchCustomItems();
+        customItems.forEach(item => addCustomItemToUI(item));
+    }
+    
+    // Initialize custom items
+    loadCustomItems();
+    
+    // Notification function
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            ${type === 'success' ? 'background: #48bb78;' : 'background: #f56565;'}
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
 
     // Add keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // Press 'H' to go to home
         if (e.key === 'h' || e.key === 'H') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
-        // Press 'F' to focus search
-        if (e.key === 'f' || e.key === 'F') {
-            searchInput.focus();
         }
     });
 
@@ -196,6 +394,53 @@ document.addEventListener('DOMContentLoaded', function() {
             tooltip.style.opacity = '0';
         });
     });
+
+    // Register Service Worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('🐀 Service Worker зарегистрирован успешно:', registration.scope);
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New content is available, show update notification
+                            showUpdateNotification();
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('🐀 Ошибка регистрации Service Worker:', error);
+            }
+        });
+    }
+
+    // Show update notification
+    function showUpdateNotification() {
+        const updateDiv = document.createElement('div');
+        updateDiv.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10000;
+            text-align: center;
+        `;
+        updateDiv.innerHTML = `
+            <p style="margin: 0 0 10px 0; font-weight: 500;">🔄 Доступно обновление!</p>
+            <button onclick="window.location.reload()" style="background: white; color: #667eea; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: 500; margin-right: 10px;">Обновить</button>
+            <button onclick="this.parentElement.remove()" style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 5px; cursor: pointer;">Позже</button>
+        `;
+        document.body.appendChild(updateDiv);
+    }
 
     console.log('🐀 Крысиный гид загружен успешно!');
 });
