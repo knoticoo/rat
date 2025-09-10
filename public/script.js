@@ -90,8 +90,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Custom food items functionality
-    let customItems = [];
+    // Dynamic food items functionality
+    let categories = [];
+    let foodItems = {};
     
     // Create modal for adding items
     const addItemModal = document.createElement('div');
@@ -159,26 +160,38 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // API functions
-    async function fetchCustomItems() {
+    async function fetchCategories() {
         try {
-            const response = await fetch('/api/items');
-            if (!response.ok) throw new Error('Ошибка загрузки данных');
+            const response = await fetch('/api/categories');
+            if (!response.ok) throw new Error('Ошибка загрузки категорий');
             return await response.json();
         } catch (error) {
-            console.error('Ошибка загрузки продуктов:', error);
-            showNotification('Ошибка загрузки данных', 'error');
+            console.error('Ошибка загрузки категорий:', error);
+            showNotification('Ошибка загрузки категорий', 'error');
             return [];
         }
     }
     
-    async function addCustomItem(name, type) {
+    async function fetchFoodItems() {
+        try {
+            const response = await fetch('/api/items/grouped');
+            if (!response.ok) throw new Error('Ошибка загрузки продуктов');
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка загрузки продуктов:', error);
+            showNotification('Ошибка загрузки продуктов', 'error');
+            return {};
+        }
+    }
+    
+    async function addFoodItem(name, type, category_id) {
         try {
             const response = await fetch('/api/items', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name, type })
+                body: JSON.stringify({ name, type, category_id })
             });
             
             if (!response.ok) {
@@ -193,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function deleteCustomItem(id) {
+    async function deleteFoodItem(id) {
         try {
             const response = await fetch(`/api/items/${id}`, {
                 method: 'DELETE'
@@ -211,41 +224,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function clearCustomItemsByType(type) {
-        try {
-            const response = await fetch(`/api/items/type/${type}`, {
-                method: 'DELETE'
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Ошибка очистки продуктов');
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('Ошибка очистки продуктов:', error);
-            throw error;
-        }
-    }
-    
     // Add item functionality
     document.getElementById('add-item-btn').addEventListener('click', async function() {
         const itemName = document.getElementById('item-name').value.trim();
         const itemType = document.getElementById('item-type').value;
+        const categoryId = document.getElementById('item-category').value;
         
-        if (itemName) {
+        if (itemName && categoryId) {
             try {
-                const newItem = await addCustomItem(itemName, itemType);
+                const newItem = await addFoodItem(itemName, itemType, categoryId);
                 
-                // Add to local array
-                customItems.push(newItem);
-                
-                // Add to UI
-                addCustomItemToUI(newItem);
+                // Reload food items to update UI
+                await loadFoodItems();
                 
                 // Clear form and close modal
                 document.getElementById('item-name').value = '';
+                document.getElementById('item-category').value = '';
                 modal.style.display = 'none';
                 
                 // Show success message
@@ -254,78 +248,136 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification(error.message, 'error');
             }
         } else {
-            showNotification('Введите название продукта', 'error');
+            showNotification('Заполните все поля', 'error');
         }
     });
     
-    // Function to add custom item to UI
-    function addCustomItemToUI(item) {
-        const category = item.type === 'safe' ? 'safe' : 'dangerous';
-        const categoryElement = document.querySelector(`.food-category.${category} .food-grid`);
+    // Function to populate category dropdown
+    function populateCategoryDropdown() {
+        const categorySelect = document.getElementById('item-category');
+        categorySelect.innerHTML = '<option value="">Выберите категорию...</option>';
         
-        // Check if custom category exists
-        let customCategoryElement = categoryElement.querySelector('.custom-category');
-        if (!customCategoryElement) {
-            customCategoryElement = document.createElement('div');
-            customCategoryElement.className = 'food-item custom-category';
-            customCategoryElement.innerHTML = `
-                <h4>Мои продукты</h4>
-                <ul class="custom-items-list"></ul>
-                <button class="clear-custom-btn" style="margin-top: 10px; padding: 5px 10px; background: #f56565; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">Очистить все</button>
-            `;
-            categoryElement.appendChild(customCategoryElement);
-            
-            // Add clear functionality
-            customCategoryElement.querySelector('.clear-custom-btn').addEventListener('click', async function() {
-                if (confirm('Удалить все ваши продукты?')) {
-                    try {
-                        await clearCustomItemsByType(item.type);
-                        customItems = customItems.filter(i => i.type !== item.type);
-                        customCategoryElement.remove();
-                        showNotification('Продукты удалены', 'success');
-                    } catch (error) {
-                        showNotification(error.message, 'error');
-                    }
-                }
-            });
-        }
-        
-        const listElement = customCategoryElement.querySelector('.custom-items-list');
-        const listItem = document.createElement('li');
-        listItem.innerHTML = `
-            ${item.name}
-            <button class="remove-item-btn" data-id="${item.id}" style="margin-left: 10px; background: #f56565; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.7rem; padding: 2px 6px;">×</button>
-        `;
-        listElement.appendChild(listItem);
-        
-        // Add remove functionality
-        listItem.querySelector('.remove-item-btn').addEventListener('click', async function() {
-            const itemId = parseInt(this.dataset.id);
-            try {
-                await deleteCustomItem(itemId);
-                customItems = customItems.filter(i => i.id !== itemId);
-                listItem.remove();
-                
-                // Remove custom category if empty
-                if (listElement.children.length === 0) {
-                    customCategoryElement.remove();
-                }
-                
-                showNotification('Продукт удален', 'success');
-            } catch (error) {
-                showNotification(error.message, 'error');
-            }
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.display_name;
+            categorySelect.appendChild(option);
         });
     }
     
-    // Load existing custom items on page load
-    async function loadCustomItems() {
-        customItems = await fetchCustomItems();
-        customItems.forEach(item => addCustomItemToUI(item));
+    // Function to update category dropdown based on selected type
+    function updateCategoryDropdown() {
+        const typeSelect = document.getElementById('item-type');
+        const categorySelect = document.getElementById('item-category');
+        
+        typeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+            categorySelect.innerHTML = '<option value="">Выберите категорию...</option>';
+            
+            categories
+                .filter(cat => cat.type === selectedType)
+                .forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.display_name;
+                    categorySelect.appendChild(option);
+                });
+        });
     }
     
-    // Initialize custom items
-    loadCustomItems();
+    // Function to create dynamic food section
+    function createDynamicFoodSection() {
+        const foodSection = document.querySelector('#food .food-categories');
+        foodSection.innerHTML = '';
+        
+        // Group categories by type
+        const safeCategories = categories.filter(cat => cat.type === 'safe');
+        const dangerousCategories = categories.filter(cat => cat.type === 'dangerous');
+        
+        // Create safe foods section
+        if (safeCategories.length > 0) {
+            const safeSection = document.createElement('div');
+            safeSection.className = 'food-category safe';
+            safeSection.innerHTML = '<h3>✅ Безопасные продукты</h3><div class="food-grid"></div>';
+            foodSection.appendChild(safeSection);
+            
+            safeCategories.forEach(category => {
+                const categoryElement = createCategoryElement(category);
+                safeSection.querySelector('.food-grid').appendChild(categoryElement);
+            });
+        }
+        
+        // Create dangerous foods section
+        if (dangerousCategories.length > 0) {
+            const dangerousSection = document.createElement('div');
+            dangerousSection.className = 'food-category dangerous';
+            dangerousSection.innerHTML = '<h3>❌ Опасные продукты</h3><div class="food-grid"></div>';
+            foodSection.appendChild(dangerousSection);
+            
+            dangerousCategories.forEach(category => {
+                const categoryElement = createCategoryElement(category);
+                dangerousSection.querySelector('.food-grid').appendChild(categoryElement);
+            });
+        }
+    }
+    
+    // Function to create category element
+    function createCategoryElement(category) {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'food-item';
+        categoryDiv.dataset.categoryId = category.id;
+        
+        const items = foodItems[category.name]?.items || [];
+        
+        categoryDiv.innerHTML = `
+            <h4>${category.display_name}</h4>
+            <ul class="category-items-list">
+                ${items.map(item => `
+                    <li>
+                        ${item.name}
+                        <button class="remove-item-btn" data-id="${item.id}" style="margin-left: 10px; background: #f56565; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.7rem; padding: 2px 6px;">×</button>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+        
+        // Add remove functionality to items
+        categoryDiv.querySelectorAll('.remove-item-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const itemId = parseInt(this.dataset.id);
+                try {
+                    await deleteFoodItem(itemId);
+                    await loadFoodItems(); // Reload to update UI
+                    showNotification('Продукт удален', 'success');
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                }
+            });
+        });
+        
+        return categoryDiv;
+    }
+    
+    // Load categories and food items
+    async function loadCategories() {
+        categories = await fetchCategories();
+        populateCategoryDropdown();
+        updateCategoryDropdown();
+    }
+    
+    async function loadFoodItems() {
+        foodItems = await fetchFoodItems();
+        createDynamicFoodSection();
+    }
+    
+    // Initialize everything
+    async function initializeApp() {
+        await loadCategories();
+        await loadFoodItems();
+    }
+    
+    // Initialize the app
+    initializeApp();
     
     // Notification function
     function showNotification(message, type) {

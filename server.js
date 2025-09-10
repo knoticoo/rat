@@ -59,11 +59,8 @@ db.serialize(() => {
         { name: 'fruits', display_name: 'Фрукты', type: 'safe' },
         { name: 'proteins', display_name: 'Белки', type: 'safe' },
         { name: 'grains', display_name: 'Зерновые', type: 'safe' },
-        { name: 'dairy', display_name: 'Молочные продукты', type: 'safe' },
-        { name: 'nuts', display_name: 'Орехи и семена', type: 'safe' },
         { name: 'toxic', display_name: 'Токсичные', type: 'dangerous' },
-        { name: 'harmful', display_name: 'Вредные', type: 'dangerous' },
-        { name: 'processed', display_name: 'Обработанные продукты', type: 'dangerous' }
+        { name: 'harmful', display_name: 'Вредные', type: 'dangerous' }
     ];
 
     defaultCategories.forEach(category => {
@@ -74,6 +71,73 @@ db.serialize(() => {
             }
         });
     });
+
+    // Insert default food items
+    const defaultFoodItems = [
+        // Safe vegetables
+        { name: 'Морковь', category_name: 'vegetables', type: 'safe' },
+        { name: 'Брокколи', category_name: 'vegetables', type: 'safe' },
+        { name: 'Цветная капуста', category_name: 'vegetables', type: 'safe' },
+        { name: 'Огурцы', category_name: 'vegetables', type: 'safe' },
+        { name: 'Кабачки', category_name: 'vegetables', type: 'safe' },
+        { name: 'Сладкий перец', category_name: 'vegetables', type: 'safe' },
+        
+        // Safe fruits
+        { name: 'Яблоки (без семян)', category_name: 'fruits', type: 'safe' },
+        { name: 'Бананы', category_name: 'fruits', type: 'safe' },
+        { name: 'Виноград', category_name: 'fruits', type: 'safe' },
+        { name: 'Клубника', category_name: 'fruits', type: 'safe' },
+        { name: 'Груши', category_name: 'fruits', type: 'safe' },
+        { name: 'Персики', category_name: 'fruits', type: 'safe' },
+        
+        // Safe proteins
+        { name: 'Варёные яйца', category_name: 'proteins', type: 'safe' },
+        { name: 'Творог (нежирный)', category_name: 'proteins', type: 'safe' },
+        { name: 'Куриная грудка', category_name: 'proteins', type: 'safe' },
+        { name: 'Рыба (варёная)', category_name: 'proteins', type: 'safe' },
+        { name: 'Йогурт (без сахара)', category_name: 'proteins', type: 'safe' },
+        
+        // Safe grains
+        { name: 'Овсянка', category_name: 'grains', type: 'safe' },
+        { name: 'Рис (варёный)', category_name: 'grains', type: 'safe' },
+        { name: 'Пшеница', category_name: 'grains', type: 'safe' },
+        { name: 'Ячмень', category_name: 'grains', type: 'safe' },
+        { name: 'Кукуруза', category_name: 'grains', type: 'safe' },
+        
+        // Dangerous toxic
+        { name: 'Шоколад', category_name: 'toxic', type: 'dangerous' },
+        { name: 'Лук и чеснок', category_name: 'toxic', type: 'dangerous' },
+        { name: 'Авокадо', category_name: 'toxic', type: 'dangerous' },
+        { name: 'Сырой картофель', category_name: 'toxic', type: 'dangerous' },
+        { name: 'Косточки фруктов', category_name: 'toxic', type: 'dangerous' },
+        
+        // Dangerous harmful
+        { name: 'Жирная пища', category_name: 'harmful', type: 'dangerous' },
+        { name: 'Солёные продукты', category_name: 'harmful', type: 'dangerous' },
+        { name: 'Сладости', category_name: 'harmful', type: 'dangerous' },
+        { name: 'Алкоголь', category_name: 'harmful', type: 'dangerous' },
+        { name: 'Кофеин', category_name: 'harmful', type: 'dangerous' }
+    ];
+
+    // Insert default food items after categories are created
+    setTimeout(() => {
+        defaultFoodItems.forEach(item => {
+            db.get(`SELECT id FROM categories WHERE name = ?`, [item.category_name], (err, category) => {
+                if (err) {
+                    console.error(`Ошибка поиска категории ${item.category_name}:`, err.message);
+                    return;
+                }
+                if (category) {
+                    db.run(`INSERT OR IGNORE INTO custom_food_items (name, type, category_id) VALUES (?, ?, ?)`, 
+                        [item.name, item.type, category.id], (err) => {
+                        if (err) {
+                            console.error(`Ошибка добавления продукта ${item.name}:`, err.message);
+                        }
+                    });
+                }
+            });
+        });
+    }, 1000);
 });
 
 // API Routes
@@ -172,6 +236,37 @@ app.get('/api/items/category/:categoryId', (req, res) => {
             return;
         }
         res.json(rows);
+    });
+});
+
+// Get all food items grouped by category
+app.get('/api/items/grouped', (req, res) => {
+    db.all(`
+        SELECT cfi.*, c.display_name as category_name, c.name as category_key, c.type as category_type
+        FROM custom_food_items cfi 
+        LEFT JOIN categories c ON cfi.category_id = c.id 
+        ORDER BY c.type, c.display_name, cfi.created_at DESC
+    `, (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        // Group items by category
+        const grouped = {};
+        rows.forEach(item => {
+            const categoryKey = item.category_key || 'uncategorized';
+            if (!grouped[categoryKey]) {
+                grouped[categoryKey] = {
+                    category_name: item.category_name || 'Без категории',
+                    category_type: item.category_type || 'safe',
+                    items: []
+                };
+            }
+            grouped[categoryKey].items.push(item);
+        });
+        
+        res.json(grouped);
     });
 });
 
