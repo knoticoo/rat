@@ -93,49 +93,65 @@ document.addEventListener('DOMContentLoaded', function() {
     // Custom food items functionality
     let customItems = [];
     
-    // Create add item form
-    const addItemForm = document.createElement('div');
-    addItemForm.id = 'add-item-form';
-    addItemForm.style.cssText = `
+    // Create modal for adding items
+    const addItemModal = document.createElement('div');
+    addItemModal.id = 'add-item-modal';
+    addItemModal.style.cssText = `
         position: fixed;
-        top: 80px;
-        right: 20px;
-        background: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
         z-index: 1000;
-        width: 300px;
-        font-family: inherit;
-        border: 2px solid #667eea;
+        display: none;
+        justify-content: center;
+        align-items: center;
     `;
     
-    addItemForm.innerHTML = `
-        <h3 style="margin: 0 0 15px 0; color: #2d3748; text-align: center;">➕ Добавить продукт</h3>
-        <input type="text" id="item-name" placeholder="Название продукта" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
-        <select id="item-type" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
-            <option value="safe">✅ Безопасный</option>
-            <option value="dangerous">❌ Опасный</option>
-        </select>
-        <button id="add-item-btn" style="width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Добавить</button>
-        <button id="toggle-form-btn" style="width: 100%; padding: 8px; margin-top: 10px; background: #e2e8f0; color: #4a5568; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">Скрыть форму</button>
+    addItemModal.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); width: 90%; max-width: 400px; position: relative;">
+            <button id="close-modal-btn" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">×</button>
+            <h3 style="margin: 0 0 20px 0; color: #2d3748; text-align: center; font-size: 1.5rem;">➕ Добавить продукт</h3>
+            <input type="text" id="item-name" placeholder="Название продукта" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
+            <select id="item-type" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <option value="safe">✅ Безопасный</option>
+                <option value="dangerous">❌ Опасный</option>
+            </select>
+            <button id="add-item-btn" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 1rem;">Добавить продукт</button>
+        </div>
     `;
     
-    document.body.appendChild(addItemForm);
+    document.body.appendChild(addItemModal);
     
-    // Toggle form visibility
-    const toggleFormBtn = document.getElementById('toggle-form-btn');
-    const form = document.getElementById('add-item-form');
-    let formVisible = true;
+    // Header button functionality
+    const addItemHeaderBtn = document.getElementById('add-item-header-btn');
+    const modal = document.getElementById('add-item-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
     
-    toggleFormBtn.addEventListener('click', function() {
-        formVisible = !formVisible;
-        if (formVisible) {
-            form.style.display = 'block';
-            this.textContent = 'Скрыть форму';
-        } else {
-            form.style.display = 'none';
-            this.textContent = 'Показать форму';
+    addItemHeaderBtn.addEventListener('click', function() {
+        modal.style.display = 'flex';
+        document.getElementById('item-name').focus();
+    });
+    
+    closeModalBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+        document.getElementById('item-name').value = '';
+    });
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            document.getElementById('item-name').value = '';
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+            modal.style.display = 'none';
+            document.getElementById('item-name').value = '';
         }
     });
     
@@ -225,8 +241,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add to UI
                 addCustomItemToUI(newItem);
                 
-                // Clear form
+                // Clear form and close modal
                 document.getElementById('item-name').value = '';
+                modal.style.display = 'none';
                 
                 // Show success message
                 showNotification('Продукт добавлен!', 'success');
