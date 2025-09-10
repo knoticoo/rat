@@ -133,11 +133,58 @@ install_dependencies() {
     fi
 }
 
+# Function to initialize database
+initialize_database() {
+    print_status "Initializing database..."
+    
+    cd "$APP_DIR"
+    
+    # Check if database file exists
+    if [ ! -f "food_items.db" ]; then
+        print_status "Database file not found, creating new database..."
+    else
+        print_status "Database file exists, checking structure..."
+    fi
+    
+    # Run a quick database initialization check
+    # This will create tables and insert default data if needed
+    node -e "
+        const sqlite3 = require('sqlite3').verbose();
+        const db = new sqlite3.Database('./food_items.db');
+        
+        // Test database connection
+        db.serialize(() => {
+            db.get('SELECT name FROM sqlite_master WHERE type=\"table\" AND name=\"categories\"', (err, row) => {
+                if (err) {
+                    console.error('Database error:', err.message);
+                    process.exit(1);
+                } else if (!row) {
+                    console.log('Database tables will be created on first server start');
+                } else {
+                    console.log('Database tables already exist');
+                }
+            });
+        });
+        
+        db.close();
+    "
+    
+    if [ $? -eq 0 ]; then
+        print_success "Database initialization check completed"
+    else
+        print_error "Database initialization failed"
+        exit 1
+    fi
+}
+
 # Function to start the service
 start_service() {
     print_status "Starting service on port $APP_PORT..."
     
     cd "$APP_DIR"
+    
+    # Initialize database before starting
+    initialize_database
     
     # Start service with nohup for SSH disconnection persistence
     nohup node server.js > "$LOG_FILE" 2>&1 &
@@ -147,7 +194,7 @@ start_service() {
     echo $PID > "$PID_FILE"
     
     # Wait a moment and check if service started successfully
-    sleep 3
+    sleep 5
     
     if ps -p $PID > /dev/null 2>&1; then
         print_success "Service started successfully (PID: $PID)"
@@ -155,15 +202,35 @@ start_service() {
         print_status "Logs are being written to: $LOG_FILE"
         print_status "PID file: $PID_FILE"
         
-        # Test if service is responding
+        # Test if service is responding and database is working
+        print_status "Testing service health..."
+        
+        # Test basic HTTP response
         if curl -s -f http://localhost:$APP_PORT > /dev/null 2>&1; then
             print_success "Service is responding to HTTP requests"
         else
             print_warning "Service started but not responding to HTTP requests yet"
         fi
+        
+        # Test database API
+        if curl -s -f http://localhost:$APP_PORT/api/categories > /dev/null 2>&1; then
+            print_success "Database API is working correctly"
+        else
+            print_warning "Service started but database API not responding yet"
+        fi
+        
+        # Test food items API
+        if curl -s -f http://localhost:$APP_PORT/api/items/grouped > /dev/null 2>&1; then
+            print_success "Food items API is working correctly"
+        else
+            print_warning "Service started but food items API not responding yet"
+        fi
+        
     else
         print_error "Failed to start service"
         print_error "Check logs: $LOG_FILE"
+        print_status "Last 20 lines of logs:"
+        tail -20 "$LOG_FILE" 2>/dev/null || echo "No logs available"
         exit 1
     fi
 }
