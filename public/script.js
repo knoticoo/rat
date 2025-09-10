@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Custom food items functionality
-    let customItems = JSON.parse(localStorage.getItem('customFoodItems') || '[]');
+    let customItems = [];
     
     // Create add item form
     const addItemForm = document.createElement('div');
@@ -139,30 +139,100 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // API functions
+    async function fetchCustomItems() {
+        try {
+            const response = await fetch('/api/items');
+            if (!response.ok) throw new Error('Ошибка загрузки данных');
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка загрузки продуктов:', error);
+            showNotification('Ошибка загрузки данных', 'error');
+            return [];
+        }
+    }
+    
+    async function addCustomItem(name, type) {
+        try {
+            const response = await fetch('/api/items', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, type })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Ошибка добавления продукта');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка добавления продукта:', error);
+            throw error;
+        }
+    }
+    
+    async function deleteCustomItem(id) {
+        try {
+            const response = await fetch(`/api/items/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Ошибка удаления продукта');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка удаления продукта:', error);
+            throw error;
+        }
+    }
+    
+    async function clearCustomItemsByType(type) {
+        try {
+            const response = await fetch(`/api/items/type/${type}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Ошибка очистки продуктов');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка очистки продуктов:', error);
+            throw error;
+        }
+    }
+    
     // Add item functionality
-    document.getElementById('add-item-btn').addEventListener('click', function() {
+    document.getElementById('add-item-btn').addEventListener('click', async function() {
         const itemName = document.getElementById('item-name').value.trim();
         const itemType = document.getElementById('item-type').value;
         
         if (itemName) {
-            const newItem = {
-                id: Date.now(),
-                name: itemName,
-                type: itemType,
-                category: 'custom'
-            };
-            
-            customItems.push(newItem);
-            localStorage.setItem('customFoodItems', JSON.stringify(customItems));
-            
-            // Add to UI
-            addCustomItemToUI(newItem);
-            
-            // Clear form
-            document.getElementById('item-name').value = '';
-            
-            // Show success message
-            showNotification('Продукт добавлен!', 'success');
+            try {
+                const newItem = await addCustomItem(itemName, itemType);
+                
+                // Add to local array
+                customItems.push(newItem);
+                
+                // Add to UI
+                addCustomItemToUI(newItem);
+                
+                // Clear form
+                document.getElementById('item-name').value = '';
+                
+                // Show success message
+                showNotification('Продукт добавлен!', 'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
         } else {
             showNotification('Введите название продукта', 'error');
         }
@@ -186,12 +256,16 @@ document.addEventListener('DOMContentLoaded', function() {
             categoryElement.appendChild(customCategoryElement);
             
             // Add clear functionality
-            customCategoryElement.querySelector('.clear-custom-btn').addEventListener('click', function() {
+            customCategoryElement.querySelector('.clear-custom-btn').addEventListener('click', async function() {
                 if (confirm('Удалить все ваши продукты?')) {
-                    customItems = customItems.filter(i => i.type !== item.type);
-                    localStorage.setItem('customFoodItems', JSON.stringify(customItems));
-                    customCategoryElement.remove();
-                    showNotification('Продукты удалены', 'success');
+                    try {
+                        await clearCustomItemsByType(item.type);
+                        customItems = customItems.filter(i => i.type !== item.type);
+                        customCategoryElement.remove();
+                        showNotification('Продукты удалены', 'success');
+                    } catch (error) {
+                        showNotification(error.message, 'error');
+                    }
                 }
             });
         }
@@ -205,23 +279,33 @@ document.addEventListener('DOMContentLoaded', function() {
         listElement.appendChild(listItem);
         
         // Add remove functionality
-        listItem.querySelector('.remove-item-btn').addEventListener('click', function() {
+        listItem.querySelector('.remove-item-btn').addEventListener('click', async function() {
             const itemId = parseInt(this.dataset.id);
-            customItems = customItems.filter(i => i.id !== itemId);
-            localStorage.setItem('customFoodItems', JSON.stringify(customItems));
-            listItem.remove();
-            
-            // Remove custom category if empty
-            if (listElement.children.length === 0) {
-                customCategoryElement.remove();
+            try {
+                await deleteCustomItem(itemId);
+                customItems = customItems.filter(i => i.id !== itemId);
+                listItem.remove();
+                
+                // Remove custom category if empty
+                if (listElement.children.length === 0) {
+                    customCategoryElement.remove();
+                }
+                
+                showNotification('Продукт удален', 'success');
+            } catch (error) {
+                showNotification(error.message, 'error');
             }
-            
-            showNotification('Продукт удален', 'success');
         });
     }
     
-    // Load existing custom items
-    customItems.forEach(item => addCustomItemToUI(item));
+    // Load existing custom items on page load
+    async function loadCustomItems() {
+        customItems = await fetchCustomItems();
+        customItems.forEach(item => addCustomItemToUI(item));
+    }
+    
+    // Initialize custom items
+    loadCustomItems();
     
     // Notification function
     function showNotification(message, type) {
@@ -251,11 +335,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Press 'H' to go to home
         if (e.key === 'h' || e.key === 'H') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
-        // Press 'F' to focus search
-        if (e.key === 'f' || e.key === 'F') {
-            searchInput.focus();
         }
     });
 
@@ -315,6 +394,53 @@ document.addEventListener('DOMContentLoaded', function() {
             tooltip.style.opacity = '0';
         });
     });
+
+    // Register Service Worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('🐀 Service Worker зарегистрирован успешно:', registration.scope);
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New content is available, show update notification
+                            showUpdateNotification();
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('🐀 Ошибка регистрации Service Worker:', error);
+            }
+        });
+    }
+
+    // Show update notification
+    function showUpdateNotification() {
+        const updateDiv = document.createElement('div');
+        updateDiv.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10000;
+            text-align: center;
+        `;
+        updateDiv.innerHTML = `
+            <p style="margin: 0 0 10px 0; font-weight: 500;">🔄 Доступно обновление!</p>
+            <button onclick="window.location.reload()" style="background: white; color: #667eea; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: 500; margin-right: 10px;">Обновить</button>
+            <button onclick="this.parentElement.remove()" style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 5px; cursor: pointer;">Позже</button>
+        `;
+        document.body.appendChild(updateDiv);
+    }
 
     console.log('🐀 Крысиный гид загружен успешно!');
 });
