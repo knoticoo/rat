@@ -234,6 +234,54 @@ body {
     line-height: 1.6;
 }
 
+/* Training section */
+.training-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #f7fafc, #edf2f7);
+}
+
+.training-tips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+/* Behavior section */
+.behavior-section {
+    padding: 4rem 0;
+    background: white;
+}
+
+.behavior-tips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+/* Health section */
+.health-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #fff5f5, #fed7d7);
+}
+
+.health-tips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+/* Toys section */
+.toys-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+}
+
+.toys-tips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
 /* Facts section */
 .facts-section {
     padding: 4rem 0;
@@ -291,7 +339,14 @@ body {
     }
     
     .nav {
-        gap: 1rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .nav-link {
+        font-size: 0.9rem;
+        padding: 0.5rem;
     }
     
     .hero-title {
@@ -308,7 +363,18 @@ body {
     
     .food-grid,
     .care-tips,
+    .training-tips,
+    .behavior-tips,
+    .health-tips,
+    .toys-tips,
     .facts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .training-tips,
+    .behavior-tips,
+    .health-tips,
+    .toys-tips {
         grid-template-columns: 1fr;
     }
 }
