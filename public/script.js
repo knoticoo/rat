@@ -90,42 +90,161 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add search functionality (bonus feature)
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Поиск продуктов...';
-    searchInput.style.cssText = `
+    // Custom food items functionality
+    let customItems = JSON.parse(localStorage.getItem('customFoodItems') || '[]');
+    
+    // Create add item form
+    const addItemForm = document.createElement('div');
+    addItemForm.id = 'add-item-form';
+    addItemForm.style.cssText = `
         position: fixed;
         top: 80px;
         right: 20px;
-        padding: 10px 15px;
-        border: 2px solid #667eea;
-        border-radius: 25px;
-        outline: none;
         background: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         z-index: 1000;
-        width: 250px;
+        width: 300px;
         font-family: inherit;
+        border: 2px solid #667eea;
     `;
-
-    document.body.appendChild(searchInput);
-
-    // Search functionality
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const allItems = document.querySelectorAll('.food-item, .tip-card, .fact-card');
-        
-        allItems.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            if (text.includes(searchTerm)) {
-                item.style.display = 'block';
-                item.style.opacity = '1';
-            } else {
-                item.style.opacity = '0.3';
-            }
-        });
+    
+    addItemForm.innerHTML = `
+        <h3 style="margin: 0 0 15px 0; color: #2d3748; text-align: center;">➕ Добавить продукт</h3>
+        <input type="text" id="item-name" placeholder="Название продукта" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
+        <select id="item-type" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
+            <option value="safe">✅ Безопасный</option>
+            <option value="dangerous">❌ Опасный</option>
+        </select>
+        <button id="add-item-btn" style="width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Добавить</button>
+        <button id="toggle-form-btn" style="width: 100%; padding: 8px; margin-top: 10px; background: #e2e8f0; color: #4a5568; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">Скрыть форму</button>
+    `;
+    
+    document.body.appendChild(addItemForm);
+    
+    // Toggle form visibility
+    const toggleFormBtn = document.getElementById('toggle-form-btn');
+    const form = document.getElementById('add-item-form');
+    let formVisible = true;
+    
+    toggleFormBtn.addEventListener('click', function() {
+        formVisible = !formVisible;
+        if (formVisible) {
+            form.style.display = 'block';
+            this.textContent = 'Скрыть форму';
+        } else {
+            form.style.display = 'none';
+            this.textContent = 'Показать форму';
+        }
     });
+    
+    // Add item functionality
+    document.getElementById('add-item-btn').addEventListener('click', function() {
+        const itemName = document.getElementById('item-name').value.trim();
+        const itemType = document.getElementById('item-type').value;
+        
+        if (itemName) {
+            const newItem = {
+                id: Date.now(),
+                name: itemName,
+                type: itemType,
+                category: 'custom'
+            };
+            
+            customItems.push(newItem);
+            localStorage.setItem('customFoodItems', JSON.stringify(customItems));
+            
+            // Add to UI
+            addCustomItemToUI(newItem);
+            
+            // Clear form
+            document.getElementById('item-name').value = '';
+            
+            // Show success message
+            showNotification('Продукт добавлен!', 'success');
+        } else {
+            showNotification('Введите название продукта', 'error');
+        }
+    });
+    
+    // Function to add custom item to UI
+    function addCustomItemToUI(item) {
+        const category = item.type === 'safe' ? 'safe' : 'dangerous';
+        const categoryElement = document.querySelector(`.food-category.${category} .food-grid`);
+        
+        // Check if custom category exists
+        let customCategoryElement = categoryElement.querySelector('.custom-category');
+        if (!customCategoryElement) {
+            customCategoryElement = document.createElement('div');
+            customCategoryElement.className = 'food-item custom-category';
+            customCategoryElement.innerHTML = `
+                <h4>Мои продукты</h4>
+                <ul class="custom-items-list"></ul>
+                <button class="clear-custom-btn" style="margin-top: 10px; padding: 5px 10px; background: #f56565; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">Очистить все</button>
+            `;
+            categoryElement.appendChild(customCategoryElement);
+            
+            // Add clear functionality
+            customCategoryElement.querySelector('.clear-custom-btn').addEventListener('click', function() {
+                if (confirm('Удалить все ваши продукты?')) {
+                    customItems = customItems.filter(i => i.type !== item.type);
+                    localStorage.setItem('customFoodItems', JSON.stringify(customItems));
+                    customCategoryElement.remove();
+                    showNotification('Продукты удалены', 'success');
+                }
+            });
+        }
+        
+        const listElement = customCategoryElement.querySelector('.custom-items-list');
+        const listItem = document.createElement('li');
+        listItem.innerHTML = `
+            ${item.name}
+            <button class="remove-item-btn" data-id="${item.id}" style="margin-left: 10px; background: #f56565; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.7rem; padding: 2px 6px;">×</button>
+        `;
+        listElement.appendChild(listItem);
+        
+        // Add remove functionality
+        listItem.querySelector('.remove-item-btn').addEventListener('click', function() {
+            const itemId = parseInt(this.dataset.id);
+            customItems = customItems.filter(i => i.id !== itemId);
+            localStorage.setItem('customFoodItems', JSON.stringify(customItems));
+            listItem.remove();
+            
+            // Remove custom category if empty
+            if (listElement.children.length === 0) {
+                customCategoryElement.remove();
+            }
+            
+            showNotification('Продукт удален', 'success');
+        });
+    }
+    
+    // Load existing custom items
+    customItems.forEach(item => addCustomItemToUI(item));
+    
+    // Notification function
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            ${type === 'success' ? 'background: #48bb78;' : 'background: #f56565;'}
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
 
     // Add keyboard shortcuts
     document.addEventListener('keydown', function(e) {
