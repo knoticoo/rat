@@ -68,8 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Add hover effects for food items
-    const foodItems = document.querySelectorAll('.food-item');
-    foodItems.forEach(item => {
+    const foodItemElements = document.querySelectorAll('.food-item');
+    foodItemElements.forEach(item => {
         item.addEventListener('mouseenter', function() {
             this.style.transform = 'translateY(-8px) scale(1.02)';
         });
@@ -133,23 +133,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('add-item-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
     
-    addItemHeaderBtn.addEventListener('click', function() {
-        modal.style.display = 'flex';
-        document.getElementById('item-name').focus();
-    });
+    console.log('🐀 Debug: addItemHeaderBtn found:', !!addItemHeaderBtn);
+    console.log('🐀 Debug: modal found:', !!modal);
+    console.log('🐀 Debug: closeModalBtn found:', !!closeModalBtn);
     
-    closeModalBtn.addEventListener('click', function() {
-        modal.style.display = 'none';
-        document.getElementById('item-name').value = '';
-    });
+    if (addItemHeaderBtn) {
+        addItemHeaderBtn.addEventListener('click', function() {
+            console.log('🐀 Debug: Add button clicked');
+            modal.style.display = 'flex';
+            document.getElementById('item-name').focus();
+        });
+    } else {
+        console.error('🐀 Error: Add button not found!');
+    }
     
-    // Close modal when clicking outside
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', function() {
             modal.style.display = 'none';
             document.getElementById('item-name').value = '';
-        }
-    });
+        });
+    } else {
+        console.error('🐀 Error: Close button not found!');
+    }
+    
+    // Close modal when clicking outside
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                document.getElementById('item-name').value = '';
+            }
+        });
+    } else {
+        console.error('🐀 Error: Modal not found!');
+    }
     
     // Close modal with Escape key
     document.addEventListener('keydown', function(e) {
@@ -225,7 +242,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Add item functionality
-    document.getElementById('add-item-btn').addEventListener('click', async function() {
+    const addItemBtn = document.getElementById('add-item-btn');
+    if (addItemBtn) {
+        addItemBtn.addEventListener('click', async function() {
         const itemName = document.getElementById('item-name').value.trim();
         const itemType = document.getElementById('item-type').value;
         const categoryId = document.getElementById('item-category').value;
@@ -250,7 +269,10 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             showNotification('Заполните все поля', 'error');
         }
-    });
+        });
+    } else {
+        console.error('🐀 Error: Add item button not found!');
+    }
     
     // Function to populate category dropdown
     function populateCategoryDropdown() {
@@ -450,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.appendChild(tooltip);
 
     // Add tooltips to food items
-    foodItems.forEach(item => {
+    foodItemElements.forEach(item => {
         item.addEventListener('mouseenter', function(e) {
             const title = this.querySelector('h4').textContent;
             tooltip.textContent = `Нажмите для получения информации о ${title}`;
