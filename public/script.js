@@ -420,6 +420,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        
+        // Re-setup event listeners to ensure they work
+        setupModalEventListeners();
     }
     
     function hideFoodDetailsModal() {
@@ -429,25 +432,51 @@ document.addEventListener('DOMContentLoaded', function() {
         currentItemId = null;
     }
     
-    // Modal event listeners
-    document.addEventListener('DOMContentLoaded', function() {
+    // Modal event listeners - moved outside DOMContentLoaded to avoid conflicts
+    function setupModalEventListeners() {
         const modal = document.getElementById('food-details-modal');
         const closeModalBtn = document.getElementById('close-food-modal');
         const closeModalBtn2 = document.getElementById('close-food-modal-btn');
         const deleteBtn = document.getElementById('delete-food-item-btn');
         
-        // Close modal buttons
+        // Remove existing event listeners to prevent duplicates
         if (closeModalBtn) {
-            closeModalBtn.addEventListener('click', hideFoodDetailsModal);
+            closeModalBtn.replaceWith(closeModalBtn.cloneNode(true));
+        }
+        if (closeModalBtn2) {
+            closeModalBtn2.replaceWith(closeModalBtn2.cloneNode(true));
+        }
+        if (deleteBtn) {
+            deleteBtn.replaceWith(deleteBtn.cloneNode(true));
         }
         
-        if (closeModalBtn2) {
-            closeModalBtn2.addEventListener('click', hideFoodDetailsModal);
+        // Get fresh references after replacement
+        const freshCloseModalBtn = document.getElementById('close-food-modal');
+        const freshCloseModalBtn2 = document.getElementById('close-food-modal-btn');
+        const freshDeleteBtn = document.getElementById('delete-food-item-btn');
+        
+        // Close modal buttons
+        if (freshCloseModalBtn) {
+            freshCloseModalBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideFoodDetailsModal();
+            });
+        }
+        
+        if (freshCloseModalBtn2) {
+            freshCloseModalBtn2.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideFoodDetailsModal();
+            });
         }
         
         // Delete item button
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', async function() {
+        if (freshDeleteBtn) {
+            freshDeleteBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 if (currentItemId) {
                     if (confirm('Вы уверены, что хотите удалить этот продукт?')) {
                         try {
@@ -471,14 +500,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && modal.style.display === 'block') {
-                hideFoodDetailsModal();
-            }
-        });
-    });
+    }
+    
+    // Setup modal event listeners after DOM is loaded
+    setupModalEventListeners();
     
     // Notification function
     function showNotification(message, type) {
@@ -508,6 +533,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Press 'H' to go to home
         if (e.key === 'h' || e.key === 'H') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Close modal with Escape key
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('food-details-modal');
+            if (modal && modal.style.display === 'block') {
+                hideFoodDetailsModal();
+            }
         }
     });
 
