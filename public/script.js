@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     
     addItemModal.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); width: 90%; max-width: 400px; position: relative;">
+        <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); width: 90%; max-width: 500px; position: relative;">
             <button id="close-modal-btn" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">×</button>
             <h3 style="margin: 0 0 20px 0; color: #2d3748; text-align: center; font-size: 1.5rem;">➕ Добавить продукт</h3>
             <input type="text" id="item-name" placeholder="Название продукта" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
@@ -119,9 +119,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <option value="safe">✅ Безопасный</option>
                 <option value="dangerous">❌ Опасный</option>
             </select>
-            <select id="item-category" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
+            <select id="item-category" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box;">
                 <option value="">Выберите категорию...</option>
             </select>
+            <textarea id="item-description" placeholder="Описание продукта (необязательно)" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 1rem; box-sizing: border-box; min-height: 80px; resize: vertical; font-family: inherit;"></textarea>
             <button id="add-item-btn" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 1rem;">Добавить продукт</button>
         </div>
     `;
@@ -151,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
         closeModalBtn.addEventListener('click', function() {
             modal.style.display = 'none';
             document.getElementById('item-name').value = '';
+            document.getElementById('item-description').value = '';
         });
     } else {
         console.error('🐀 Error: Close button not found!');
@@ -162,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target === modal) {
                 modal.style.display = 'none';
                 document.getElementById('item-name').value = '';
+                document.getElementById('item-description').value = '';
             }
         });
     } else {
@@ -173,6 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Escape' && modal.style.display === 'flex') {
             modal.style.display = 'none';
             document.getElementById('item-name').value = '';
+            document.getElementById('item-description').value = '';
         }
     });
     
@@ -201,14 +205,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function addFoodItem(name, type, category_id) {
+    async function addFoodItem(name, type, category_id, description = '') {
         try {
             const response = await fetch('/api/items', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name, type, category_id })
+                body: JSON.stringify({ name, type, category_id, description })
             });
             
             if (!response.ok) {
@@ -248,10 +252,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const itemName = document.getElementById('item-name').value.trim();
         const itemType = document.getElementById('item-type').value;
         const categoryId = document.getElementById('item-category').value;
+        const itemDescription = document.getElementById('item-description').value.trim();
         
         if (itemName && categoryId) {
             try {
-                const newItem = await addFoodItem(itemName, itemType, categoryId);
+                const newItem = await addFoodItem(itemName, itemType, categoryId, itemDescription);
                 
                 // Reload food items to update UI
                 await loadFoodItems();
@@ -259,6 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Clear form and close modal
                 document.getElementById('item-name').value = '';
                 document.getElementById('item-category').value = '';
+                document.getElementById('item-description').value = '';
                 modal.style.display = 'none';
                 
                 // Show success message
@@ -267,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification(error.message, 'error');
             }
         } else {
-            showNotification('Заполните все поля', 'error');
+            showNotification('Заполните все обязательные поля', 'error');
         }
         });
     } else {
@@ -355,25 +361,21 @@ document.addEventListener('DOMContentLoaded', function() {
             <h4>${category.display_name}</h4>
             <ul class="category-items-list">
                 ${items.map(item => `
-                    <li>
+                    <li data-item-id="${item.id}" data-item-name="${item.name}" data-item-type="${item.type}" data-item-description="${item.description || ''}">
                         ${item.name}
-                        <button class="remove-item-btn" data-id="${item.id}" style="margin-left: 10px; background: #f56565; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.7rem; padding: 2px 6px;">×</button>
                     </li>
                 `).join('')}
             </ul>
         `;
         
-        // Add remove functionality to items
-        categoryDiv.querySelectorAll('.remove-item-btn').forEach(btn => {
-            btn.addEventListener('click', async function() {
-                const itemId = parseInt(this.dataset.id);
-                try {
-                    await deleteFoodItem(itemId);
-                    await loadFoodItems(); // Reload to update UI
-                    showNotification('Продукт удален', 'success');
-                } catch (error) {
-                    showNotification(error.message, 'error');
-                }
+        // Add click functionality to items for modal
+        categoryDiv.querySelectorAll('li[data-item-id]').forEach(item => {
+            item.addEventListener('click', function() {
+                const itemId = this.dataset.itemId;
+                const itemName = this.dataset.itemName;
+                const itemType = this.dataset.itemType;
+                const itemDescription = this.dataset.itemDescription;
+                showFoodDetailsModal(itemId, itemName, itemType, itemDescription);
             });
         });
         
@@ -400,6 +402,83 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize the app
     initializeApp();
+    
+    // Food Details Modal functionality
+    let currentItemId = null;
+    
+    function showFoodDetailsModal(itemId, itemName, itemType, itemDescription) {
+        currentItemId = itemId;
+        const modal = document.getElementById('food-details-modal');
+        const modalName = document.getElementById('modal-food-name');
+        const modalType = document.getElementById('modal-food-type');
+        const modalDescription = document.getElementById('modal-food-description');
+        
+        modalName.textContent = itemName;
+        modalType.textContent = itemType === 'safe' ? '✅ Безопасный' : '❌ Опасный';
+        modalType.className = `food-type-badge ${itemType}`;
+        modalDescription.textContent = itemDescription || 'Описание не указано';
+        
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    }
+    
+    function hideFoodDetailsModal() {
+        const modal = document.getElementById('food-details-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto'; // Restore scrolling
+        currentItemId = null;
+    }
+    
+    // Modal event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('food-details-modal');
+        const closeModalBtn = document.getElementById('close-food-modal');
+        const closeModalBtn2 = document.getElementById('close-food-modal-btn');
+        const deleteBtn = document.getElementById('delete-food-item-btn');
+        
+        // Close modal buttons
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', hideFoodDetailsModal);
+        }
+        
+        if (closeModalBtn2) {
+            closeModalBtn2.addEventListener('click', hideFoodDetailsModal);
+        }
+        
+        // Delete item button
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async function() {
+                if (currentItemId) {
+                    if (confirm('Вы уверены, что хотите удалить этот продукт?')) {
+                        try {
+                            await deleteFoodItem(currentItemId);
+                            await loadFoodItems(); // Reload to update UI
+                            hideFoodDetailsModal();
+                            showNotification('Продукт удален', 'success');
+                        } catch (error) {
+                            showNotification(error.message, 'error');
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Close modal when clicking outside
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideFoodDetailsModal();
+                }
+            });
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                hideFoodDetailsModal();
+            }
+        });
+    });
     
     // Notification function
     function showNotification(message, type) {

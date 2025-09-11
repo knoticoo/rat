@@ -43,6 +43,7 @@ db.serialize(() => {
         name TEXT NOT NULL,
         type TEXT NOT NULL CHECK (type IN ('safe', 'dangerous')),
         category_id INTEGER,
+        description TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (category_id) REFERENCES categories (id)
     )`, (err) => {
@@ -50,6 +51,15 @@ db.serialize(() => {
             console.error('Ошибка создания таблицы custom_food_items:', err.message);
         } else {
             console.log('✅ Таблица custom_food_items создана/проверена');
+        }
+    });
+
+    // Add description column if it doesn't exist (for existing databases)
+    db.run(`ALTER TABLE custom_food_items ADD COLUMN description TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('Ошибка добавления колонки description:', err.message);
+        } else if (!err) {
+            console.log('✅ Колонка description добавлена');
         }
     });
 
@@ -75,48 +85,48 @@ db.serialize(() => {
     // Insert default food items
     const defaultFoodItems = [
         // Safe vegetables
-        { name: 'Морковь', category_name: 'vegetables', type: 'safe' },
-        { name: 'Брокколи', category_name: 'vegetables', type: 'safe' },
-        { name: 'Цветная капуста', category_name: 'vegetables', type: 'safe' },
-        { name: 'Огурцы', category_name: 'vegetables', type: 'safe' },
-        { name: 'Кабачки', category_name: 'vegetables', type: 'safe' },
-        { name: 'Сладкий перец', category_name: 'vegetables', type: 'safe' },
+        { name: 'Морковь', category_name: 'vegetables', type: 'safe', description: 'Богата витамином А, полезна для зрения. Можно давать сырой или варёной, но лучше натереть на тёрке.' },
+        { name: 'Брокколи', category_name: 'vegetables', type: 'safe', description: 'Содержит много витаминов и минералов. Давайте в небольших количествах, может вызывать газообразование.' },
+        { name: 'Цветная капуста', category_name: 'vegetables', type: 'safe', description: 'Отличный источник витамина С. Лучше давать варёной или приготовленной на пару.' },
+        { name: 'Огурцы', category_name: 'vegetables', type: 'safe', description: 'Содержат много воды, хорошо утоляют жажду. Можно давать с кожурой, но тщательно вымыть.' },
+        { name: 'Кабачки', category_name: 'vegetables', type: 'safe', description: 'Низкокалорийные, содержат калий. Можно давать сырыми или варёными.' },
+        { name: 'Сладкий перец', category_name: 'vegetables', type: 'safe', description: 'Богат витамином С. Удалите семена и перегородки перед подачей.' },
         
         // Safe fruits
-        { name: 'Яблоки (без семян)', category_name: 'fruits', type: 'safe' },
-        { name: 'Бананы', category_name: 'fruits', type: 'safe' },
-        { name: 'Виноград', category_name: 'fruits', type: 'safe' },
-        { name: 'Клубника', category_name: 'fruits', type: 'safe' },
-        { name: 'Груши', category_name: 'fruits', type: 'safe' },
-        { name: 'Персики', category_name: 'fruits', type: 'safe' },
+        { name: 'Яблоки (без семян)', category_name: 'fruits', type: 'safe', description: 'Семена содержат цианид! Давайте только мякоть без сердцевины. Богаты клетчаткой.' },
+        { name: 'Бананы', category_name: 'fruits', type: 'safe', description: 'Высокое содержание калия, но много сахара. Давайте в умеренных количествах как лакомство.' },
+        { name: 'Виноград', category_name: 'fruits', type: 'safe', description: 'Сладкое лакомство, но много сахара. Давайте по 1-2 ягоды в день.' },
+        { name: 'Клубника', category_name: 'fruits', type: 'safe', description: 'Богата витамином С. Тщательно мойте перед подачей, удаляйте листья.' },
+        { name: 'Груши', category_name: 'fruits', type: 'safe', description: 'Сладкие и сочные, но много сахара. Давайте без сердцевины и семян.' },
+        { name: 'Персики', category_name: 'fruits', type: 'safe', description: 'Сочные и сладкие. Удалите косточку и кожуру перед подачей.' },
         
         // Safe proteins
-        { name: 'Варёные яйца', category_name: 'proteins', type: 'safe' },
-        { name: 'Творог (нежирный)', category_name: 'proteins', type: 'safe' },
-        { name: 'Куриная грудка', category_name: 'proteins', type: 'safe' },
-        { name: 'Рыба (варёная)', category_name: 'proteins', type: 'safe' },
-        { name: 'Йогурт (без сахара)', category_name: 'proteins', type: 'safe' },
+        { name: 'Варёные яйца', category_name: 'proteins', type: 'safe', description: 'Отличный источник белка. Давайте только варёными, можно с желтком и белком.' },
+        { name: 'Творог (нежирный)', category_name: 'proteins', type: 'safe', description: 'Богат кальцием и белком. Выбирайте нежирный, без добавок и сахара.' },
+        { name: 'Куриная грудка', category_name: 'proteins', type: 'safe', description: 'Отличный источник белка. Давайте только варёной, без кожи и костей.' },
+        { name: 'Рыба (варёная)', category_name: 'proteins', type: 'safe', description: 'Богата омега-3 кислотами. Только варёная, без костей и кожи.' },
+        { name: 'Йогурт (без сахара)', category_name: 'proteins', type: 'safe', description: 'Полезен для пищеварения. Только натуральный, без сахара и добавок.' },
         
         // Safe grains
-        { name: 'Овсянка', category_name: 'grains', type: 'safe' },
-        { name: 'Рис (варёный)', category_name: 'grains', type: 'safe' },
-        { name: 'Пшеница', category_name: 'grains', type: 'safe' },
-        { name: 'Ячмень', category_name: 'grains', type: 'safe' },
-        { name: 'Кукуруза', category_name: 'grains', type: 'safe' },
+        { name: 'Овсянка', category_name: 'grains', type: 'safe', description: 'Богата клетчаткой. Давайте варёной, без сахара и молока.' },
+        { name: 'Рис (варёный)', category_name: 'grains', type: 'safe', description: 'Легко усваивается. Лучше коричневый рис, варёный без соли.' },
+        { name: 'Пшеница', category_name: 'grains', type: 'safe', description: 'Можно давать пророщенную пшеницу - очень полезно!' },
+        { name: 'Ячмень', category_name: 'grains', type: 'safe', description: 'Богат клетчаткой. Давайте варёным, в небольших количествах.' },
+        { name: 'Кукуруза', category_name: 'grains', type: 'safe', description: 'Сладкая и питательная. Давайте варёной, без масла и соли.' },
         
         // Dangerous toxic
-        { name: 'Шоколад', category_name: 'toxic', type: 'dangerous' },
-        { name: 'Лук и чеснок', category_name: 'toxic', type: 'dangerous' },
-        { name: 'Авокадо', category_name: 'toxic', type: 'dangerous' },
-        { name: 'Сырой картофель', category_name: 'toxic', type: 'dangerous' },
-        { name: 'Косточки фруктов', category_name: 'toxic', type: 'dangerous' },
+        { name: 'Шоколад', category_name: 'toxic', type: 'dangerous', description: 'Содержит теобромин - яд для крыс! Может вызвать смерть даже в малых количествах.' },
+        { name: 'Лук и чеснок', category_name: 'toxic', type: 'dangerous', description: 'Содержат вещества, разрушающие эритроциты. Очень опасны для крыс!' },
+        { name: 'Авокадо', category_name: 'toxic', type: 'dangerous', description: 'Содержит персин - токсин, опасный для крыс. Может вызвать проблемы с сердцем.' },
+        { name: 'Сырой картофель', category_name: 'toxic', type: 'dangerous', description: 'Содержит соланин - ядовитое вещество. Варёный картофель безопасен.' },
+        { name: 'Косточки фруктов', category_name: 'toxic', type: 'dangerous', description: 'Содержат цианид! Никогда не давайте косточки яблок, вишен, персиков.' },
         
         // Dangerous harmful
-        { name: 'Жирная пища', category_name: 'harmful', type: 'dangerous' },
-        { name: 'Солёные продукты', category_name: 'harmful', type: 'dangerous' },
-        { name: 'Сладости', category_name: 'harmful', type: 'dangerous' },
-        { name: 'Алкоголь', category_name: 'harmful', type: 'dangerous' },
-        { name: 'Кофеин', category_name: 'harmful', type: 'dangerous' }
+        { name: 'Жирная пища', category_name: 'harmful', type: 'dangerous', description: 'Может вызвать ожирение и проблемы с печенью. Крысы склонны к лишнему весу.' },
+        { name: 'Солёные продукты', category_name: 'harmful', type: 'dangerous', description: 'Избыток соли вреден для почек. Крысы не нуждаются в дополнительной соли.' },
+        { name: 'Сладости', category_name: 'harmful', type: 'dangerous', description: 'Вызывают ожирение и диабет. Крысы любят сладкое, но это вредно для них.' },
+        { name: 'Алкоголь', category_name: 'harmful', type: 'dangerous', description: 'Алкоголь ядовит для крыс! Даже капля может быть смертельной.' },
+        { name: 'Кофеин', category_name: 'harmful', type: 'dangerous', description: 'Стимулирует нервную систему, может вызвать проблемы с сердцем.' }
     ];
 
     // Insert default food items after categories are created
@@ -128,8 +138,8 @@ db.serialize(() => {
                     return;
                 }
                 if (category) {
-                    db.run(`INSERT OR IGNORE INTO custom_food_items (name, type, category_id) VALUES (?, ?, ?)`, 
-                        [item.name, item.type, category.id], (err) => {
+                    db.run(`INSERT OR IGNORE INTO custom_food_items (name, type, category_id, description) VALUES (?, ?, ?, ?)`, 
+                        [item.name, item.type, category.id, item.description], (err) => {
                         if (err) {
                             console.error(`Ошибка добавления продукта ${item.name}:`, err.message);
                         }
@@ -272,7 +282,7 @@ app.get('/api/items/grouped', (req, res) => {
 
 // Add new custom food item
 app.post('/api/items', (req, res) => {
-    const { name, type, category_id } = req.body;
+    const { name, type, category_id, description } = req.body;
     
     if (!name || !type) {
         res.status(400).json({ error: 'Название и тип продукта обязательны' });
@@ -284,7 +294,7 @@ app.post('/api/items', (req, res) => {
         return;
     }
     
-    db.run('INSERT INTO custom_food_items (name, type, category_id) VALUES (?, ?, ?)', [name, type, category_id], function(err) {
+    db.run('INSERT INTO custom_food_items (name, type, category_id, description) VALUES (?, ?, ?, ?)', [name, type, category_id, description || ''], function(err) {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -294,6 +304,7 @@ app.post('/api/items', (req, res) => {
             name, 
             type, 
             category_id,
+            description: description || '',
             message: 'Продукт успешно добавлен!' 
         });
     });
