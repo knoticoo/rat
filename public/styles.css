@@ -606,7 +606,10 @@ html {
 }
 
 .food-modal-footer {
-    text-align: center;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
 }
 
 .close-food-modal-btn {
@@ -629,6 +632,29 @@ html {
 }
 
 .close-food-modal-btn:active {
+    transform: translateY(0);
+}
+
+.delete-food-item-btn {
+    background: linear-gradient(135deg, #f56565, #e53e3e);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+}
+
+.delete-food-item-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 101, 101, 0.4);
+    background: linear-gradient(135deg, #e53e3e, #c53030);
+}
+
+.delete-food-item-btn:active {
     transform: translateY(0);
 }
 
